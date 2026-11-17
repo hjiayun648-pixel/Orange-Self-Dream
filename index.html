@@ -1,0 +1,520 @@
+<!DOCTYPE html><html lang="zh-CN" data-lvt-canonical="1"><head>
+<!--
+Canvas: 单页滚动式品牌网站；内容区 max-width 1200px，移动端响应式（断点 1024 / 820）
+Design given: 深暖底(#1A1410)+橙花梦境(dreamcore × Orange Blood)；入场Gate梦币→Hero→梦境自动售货机(投币→选择→推出→掉落→取出→身份卡→梦境签→下一站)→产品说明书→成长之路→我的包里有什么→镜头里的世界(上传)→我的梦境小铺(购物车计数)→Footer；胶片颗粒+柔光+漂浮花瓣+滚动渐入；避免100vh首屏与每区eyebrow小标签
+Asset map:
+  [@image:#1] 2816×1584 -> .hero .bg-photo img, 全宽 cover center, 叠加暗渐变遮罩（brief: Hero全宽背景+暗渐变）
+  [@image:#2] 1776×2368 (3:4) -> .portrait-frame 400×~533 (aspect-ratio 3/4), cover, object-position center 22%（面部居中偏上，保留面部特征）
+  [@image:#3] 1584×2816 竖长图 -> .vending-bg img, contain 居中, opacity .5 + 径向mask（brief: 售货机区氛围底/机器背景, contain居中）
+  [@image:#4] 2048×2048 -> #bag .bg-photo img, cover center（My Bag 背景）
+  [@image:#5] 2496×1664 -> #lens .bg-photo img, cover center（Lens World 背景）
+  [@image:#6] 2048×2048 -> #shop .bg-photo img, cover center（My Shop 背景）
+  [@image:#7] 2816×1584 -> #growth .bg-photo img, cover center（Growth Path 背景）
+Palette: bg #1A1410 -> --bg; card rgba(40,30,24,.75) -> --card; accent #F4A261 -> --accent; coral #E76F51 -> --coral; teal #2A9D8F -> --teal; fg #F8F4E9 -> --fg; muted #C5BBAE -> --muted; highlight #E9C46A -> --highlight; hairline rgba(244,162,97,.22) -> --hairline (chosen, brief未给发丝线色)
+Typography: brief给定 Noto Serif SC(标题)/Noto Sans SC(正文)/Ma Shan Zheng(手写点缀)；按 font-use 规则 Latin 先行：--latin Inter, --num Barlow（chosen，数字/编号），--display/--serif-cn 以 Noto Serif SC 承载中文标题，--cn 以 Noto Sans SC 承载正文
+Content map: 品牌名/英文名/主口号/Gate文案/姓名/出生星座MBTI身高/教育/求职意向/成分表/称号池/主要成分文案/免责声明/用户须知/经历摘要/联系方式/实习经历/校园经历/奖项技能/Footer声明 —— 全部逐字落入对应元素（见各 section 注释）
+Assumptions: 发丝线色与卡片实底色(chosen)；售货机6格身份卡与梦境签池文案为brief指定的"身份卡+梦境签(寄语/答案之书)"玩法所需的随机池内容，以brief给定称号池/成分文案为语料扩展，不新增事实性信息；商品"价格"以梦币计数(视觉计数, 非真实价格)；社交占位为占位chip不填链接；GitHub上传设置面板默认折叠，未配置时回退IndexedDB
+QA risks: Hero漂浮标签在窄屏换行->820px断点缩小字号；售货机两栏在窄屏堆叠->820px改单栏；上传视频缩略图用<video>首帧；颗粒层pointer-events:none不挡交互
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>韩佳韵 · 橙血梦境局 | Orange Blood Dream Bureau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Barlow:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@400;500;700;900&amp;family=Noto+Sans+SC:wght@400;700&amp;family=Ma+Shan+Zheng&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<!-- 全局胶片颗粒 -->
+<div class="grain-overlay" aria-hidden="true" data-lvt-eid="3346994f8e"></div>
+
+<!-- 柔光光斑 -->
+<div class="ambient" aria-hidden="true" data-lvt-eid="99b2d9ead8">
+  <div class="orb orb-1" data-lvt-eid="77e0a3122d"></div>
+  <div class="orb orb-2" data-lvt-eid="7d4aa56ce9"></div>
+  <div class="orb orb-3" data-lvt-eid="d6f181339e"></div>
+</div>
+
+<!-- 漂浮花瓣（JS 生成） -->
+<div id="petals" aria-hidden="true" data-lvt-eid="123c8a5ce0"></div>
+
+<!-- ══════════ 入场 Gate ══════════ -->
+<div class="gate" id="gate" data-lvt-eid="3958cb3977">
+  <p class="gate-kicker" data-lvt-eid="bc0f78b4eb">Orange Blood Dream Bureau</p>
+  <h1 class="gate-title" data-lvt-eid="9860210f75">请投币进入梦境</h1>
+  <button class="dream-coin" id="gateCoin" aria-label="投一枚梦币，打开韩佳韵的平行人生" data-lvt-eid="63214a99f6">梦</button>
+  <p class="gate-sub" data-lvt-eid="cabc1ed262">投一枚梦币，打开韩佳韵的平行人生</p>
+  <p class="gate-sub" data-lvt-eid="05431a71dd">点击梦币，开始游览</p>
+</div>
+
+<main data-lvt-eid="9964de8c0c">
+
+  <!-- ══════════ Hero ══════════ -->
+  <header class="hero" id="top" data-lvt-eid="b5a02ce263">
+    <div class="bg-photo" data-lvt-eid="e0d6a8d40f">
+      <img src="https://a.lovart.ai/artifacts/agent/PiekMzLycGKAN4wI.png" alt="梦核橙花田野主视觉" data-lvt-eid="645f548a3a">
+    </div>
+
+    <div class="hero-inner" data-lvt-eid="2f269b257e">
+      <div class="hero-copy reveal" data-lvt-eid="0bd6e1fc40">
+        <p class="hero-brand-en" data-lvt-eid="95734656d2">Orange Blood Dream Bureau</p>
+        <h1 class="hero-brand" data-lvt-eid="a0c383824a">
+          <span class="name" data-lvt-eid="1055dffdbd">韩佳韵</span>
+          <span class="bureau" data-lvt-eid="46e3d028d4">· 橙血梦境局</span>
+        </h1>
+        <p class="hero-slogan" data-lvt-eid="ed1931eb0f">投一枚梦币，打开我的平行人生</p>
+        <p class="hero-desc" data-lvt-eid="4da2e8fb1b">一份把自己当成品牌产品来企划的新媒体作业：梦境自动售货机、产品说明书、成长之路、包里的宇宙、镜头里的世界，和一间只卖特质的小铺。</p>
+        <div class="hero-cta-row" data-lvt-eid="6773f17376">
+          <button class="btn btn-primary" data-scroll="#vending" data-lvt-eid="d9324e3635">🪙 去投币</button>
+          <button class="btn btn-ghost" data-scroll="#about" data-lvt-eid="3e94c6f9fd">阅读说明书</button>
+        </div>
+      </div>
+
+      <div class="hero-portrait reveal d1" data-lvt-eid="bd247ad88c">
+        <div class="portrait-halo" aria-hidden="true" data-lvt-eid="1ac534e1c7"></div>
+        <div class="portrait-frame" data-lvt-eid="24b8e61492">
+          <img src="https://a.lovart.ai/artifacts/agent/CIyGMz84VnJs6AOT.png" alt="韩佳韵 梦核风格证件照" data-lvt-eid="ff05a810f9">
+        </div>
+        <p class="portrait-tag" data-lvt-eid="e31f57e6e8">求职意向 · 平面设计实习生</p>
+      </div>
+    </div>
+
+    <!-- 底部漂浮标签（逐字） -->
+    <div class="hero-float-tags" aria-label="个人标签" data-lvt-eid="c0afbac3ec">
+      <span class="float-tag" data-lvt-eid="0170867c1d">天蝎座</span>
+      <span class="float-tag" data-lvt-eid="00ae455397">ENFP</span>
+      <span class="float-tag" data-lvt-eid="26d975e74a"><span class="num" data-lvt-eid="dad9c29ed8">175</span>cm</span>
+      <span class="float-tag" data-lvt-eid="8bc459394b"><span class="num" data-lvt-eid="200aad188f">2005.11.13</span></span>
+      <span class="float-tag" data-lvt-eid="28be7dec89">中南财大 → 东华大学</span>
+    </div>
+  </header>
+
+  <!-- ══════════ 梦境自动售货机 ══════════ -->
+  <section class="section vending-section" id="vending" data-lvt-eid="799cb11e58">
+    <div class="container" data-lvt-eid="b50f6d782c">
+      <div class="section-head reveal" data-lvt-eid="fd9729b795">
+        <h2 class="section-title" data-lvt-eid="205014f09c">梦境自动售货机<span class="en" data-lvt-eid="86ab955f63">Dream Vending Machine</span></h2>
+        <div class="divider-glow" data-lvt-eid="ff13912356"></div>
+        <p class="section-lede" data-lvt-eid="4b1ad843a7">投币 → 选择 → 推出 → 掉落 → 取出。你会抽到一枚"梦境视角身份卡"，它将决定你浏览本站的出场顺序与叙事侧重；身份卡还能再抽一支梦境签。</p>
+      </div>
+
+      <div class="vending-stage reveal d1" data-lvt-eid="a0f4399147">
+        <div class="vending-bg" aria-hidden="true" data-lvt-eid="72e802c6bd">
+          <img src="https://a.lovart.ai/artifacts/agent/jjmEFZ9vRh6ZZcjX.png" alt="" data-lvt-eid="78f1fe1f3e">
+        </div>
+
+        <div class="vending-machine" id="vendingMachine" data-lvt-eid="ffe011cb75">
+          <div class="vm-marquee" data-lvt-eid="ac66919724">橙 血 梦 境 局<small data-lvt-eid="1eb89cbf27">Dream Capsule Co.</small></div>
+
+          <div class="vm-screen" data-lvt-eid="cc30ceecb9">
+            <p class="vm-screen-text" id="vmScreen" data-lvt-eid="48eaa8588b">欢迎投币。本机只售梦境。</p>
+          </div>
+
+          <div class="vm-body" data-lvt-eid="a9a64592a2">
+            <div class="vm-products" id="vmProducts" aria-label="身份卡货道" data-lvt-eid="1d18f737b4">
+              <div class="vm-cell" data-code="A1" data-lvt-eid="eaacb6b77a">🌙<span class="code" data-lvt-eid="65da88f96d">A1</span></div>
+              <div class="vm-cell" data-code="A2" data-lvt-eid="8f82f58b13">☕<span class="code" data-lvt-eid="de74af8b27">A2</span></div>
+              <div class="vm-cell" data-code="A3" data-lvt-eid="72721ff8a6">🛏️<span class="code" data-lvt-eid="6471ad6c62">A3</span></div>
+              <div class="vm-cell" data-code="B1" data-lvt-eid="4a79df8f60">🥟<span class="code" data-lvt-eid="fbbf20cf30">B1</span></div>
+              <div class="vm-cell" data-code="B2" data-lvt-eid="127e852cfb">🎬<span class="code" data-lvt-eid="21a3ed8015">B2</span></div>
+              <div class="vm-cell" data-code="B3" data-lvt-eid="f9ef660f94">💃<span class="code" data-lvt-eid="e29a6fd2b0">B3</span></div>
+            </div>
+
+            <div class="vm-panel" data-lvt-eid="80494d8c14">
+              <div class="vm-keys" id="vmKeys" data-lvt-eid="4202a6896e">
+                <button class="vm-key" data-code="A1" data-lvt-eid="817b3791a0">A1</button>
+                <button class="vm-key" data-code="A2" data-lvt-eid="7f4546b41f">A2</button>
+                <button class="vm-key" data-code="A3" data-lvt-eid="c3ea9c5d18">A3</button>
+                <button class="vm-key" data-code="B1" data-lvt-eid="5557735973">B1</button>
+                <button class="vm-key" data-code="B2" data-lvt-eid="4ae5d74953">B2</button>
+                <button class="vm-key" data-code="B3" data-lvt-eid="c0dda4e841">B3</button>
+              </div>
+              <div class="vm-coin-zone" data-lvt-eid="4b8b14e813">
+                <div class="vm-slot" id="vmSlot" aria-hidden="true" data-lvt-eid="d3867a8701"></div>
+                <span class="vm-slot-label" data-lvt-eid="ea69430225">投 币 口</span>
+                <button class="vm-insert-btn" id="vmInsert" data-lvt-eid="361f1fa34d">投 入 梦 币</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="vm-tray" id="vmTray" data-lvt-eid="619ba326f4">
+            <div class="vm-capsule" id="vmCapsule" aria-hidden="true" data-lvt-eid="a498fd51bb"></div>
+          </div>
+          <div style="text-align:center;" data-lvt-eid="1b762367a3">
+            <button class="vm-take-btn" id="vmTake" hidden="" data-lvt-eid="b0ea525895">取 出 胶 囊</button>
+          </div>
+        </div>
+      </div>
+      <p class="vm-hint reveal d2" data-lvt-eid="ab6f13fa7f">梦币为梦境通货，不找零、不退换、不负责解释。</p>
+    </div>
+  </section>
+
+  <!-- 抽卡结果弹层 -->
+  <div class="modal-veil" id="cardModal" role="dialog" aria-modal="true" aria-label="梦境视角身份卡" data-lvt-eid="83d18cf674">
+    <div class="modal-card" id="modalCard" data-lvt-eid="5dae625d71">
+      <button class="modal-close" id="modalClose" aria-label="关闭" data-lvt-eid="6ad6fe85dd">✕</button>
+      <div class="modal-card-inner" data-lvt-eid="a050b4e8b6">
+        <div class="card-face front" id="cardFront" data-lvt-eid="a5c5bebf85">
+          <div class="card-seal" data-lvt-eid="777da7babc">梦</div>
+          <h3 data-lvt-eid="39dbf845b6">梦境视角身份卡</h3>
+          <p data-lvt-eid="156ba56e81">DREAM PERSPECTIVE CARD</p>
+          <span class="card-tap-hint" data-lvt-eid="731efe300a">点 击 卡 面 · 抽 梦 境 签</span>
+        </div>
+        <div class="card-face back" data-lvt-eid="7adc36b98b">
+          <span class="identity-badge" data-lvt-eid="9468d4cc0a">Identity Card</span>
+          <div class="identity-emoji" id="idEmoji" data-lvt-eid="8150041dad">🌙</div>
+          <h3 class="identity-name" id="idName" data-lvt-eid="3808f1b721">—</h3>
+          <div class="identity-fortune" data-lvt-eid="b79977a8c5">
+            <em data-lvt-eid="176f181adb">梦 境 签</em>
+            <span id="idFortune" data-lvt-eid="17bcc8580c">—</span>
+          </div>
+          <button class="identity-next" id="idNext" data-lvt-eid="73d7d84926">前往下一站 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 产品说明书 About ══════════ -->
+  <section class="section" id="about" data-lvt-eid="d9b098aabe">
+    <span class="next-stop-flag" data-lvt-eid="3482db7d47">✦ 梦境签指引的下一站</span>
+    <div class="container" data-lvt-eid="c7e7e1b45e">
+      <div class="section-head reveal" data-lvt-eid="9ab85a983f">
+        <h2 class="section-title" data-lvt-eid="e484cdfd6e">产品说明书<span class="en" data-lvt-eid="b74f7ebb07">Product Manual</span></h2>
+        <div class="divider-glow" data-lvt-eid="86ddec0ed5"></div>
+        <p class="section-lede" data-lvt-eid="8f6b132ed7">本品为限量单人款，出厂即绝版。请在地铁、深夜或任何需要打发时间的场合阅读。</p>
+      </div>
+
+      <div class="about-grid" data-lvt-eid="980f0767c7">
+        <!-- 基础参数（个人简历核心） -->
+        <div class="dream-card manual-card reveal" data-lvt-eid="09e4256a85">
+          <h3 data-lvt-eid="d2a4c2fe7c">基础参数</h3>
+          <ul class="spec-list" data-lvt-eid="84b116912e">
+            <li data-lvt-eid="e8dc28028a"><span class="k" data-lvt-eid="732cef660c">品名</span><span class="v" data-lvt-eid="f93f151e21">韩佳韵</span></li>
+            <li data-lvt-eid="2b21fce478"><span class="k" data-lvt-eid="fac17b2936">出厂日期</span><span class="v" data-lvt-eid="740b78e68f"><span class="num" data-lvt-eid="725564aaf4">2005.11.13</span></span></li>
+            <li data-lvt-eid="ddfb956ce4"><span class="k" data-lvt-eid="ac5dbf5def">星座 / MBTI</span><span class="v" data-lvt-eid="977dd3abf0">天蝎座 · ENFP</span></li>
+            <li data-lvt-eid="22237cb5c0"><span class="k" data-lvt-eid="f791d5e1a5">规格</span><span class="v" data-lvt-eid="b7e2e89be0">净身高<span class="num" data-lvt-eid="666fcb57b4">175</span></span></li>
+            <li data-lvt-eid="6693328a79"><span class="k" data-lvt-eid="75a83e10cd">现居</span><span class="v" data-lvt-eid="2f58a4c46f">湖北武汉</span></li>
+            <li data-lvt-eid="4d04e7d556"><span class="k" data-lvt-eid="cb11dc04ac">求职意向</span><span class="v" data-lvt-eid="3d7f8df947">平面设计实习生</span></li>
+          </ul>
+        </div>
+
+        <!-- 成分表 -->
+        <div class="dream-card manual-card reveal d1" data-lvt-eid="11760248bd">
+          <h3 data-lvt-eid="9db78c2612">成分表</h3>
+          <div class="ingredient" data-lvt-eid="57c6b37b18">
+            <div class="ingredient-head" data-lvt-eid="4b83425d93"><span data-lvt-eid="7c0f79c264">咖啡因</span><span class="pct" data-lvt-eid="ea3a09be08">40%</span></div>
+            <div class="ingredient-bar" data-lvt-eid="50b19a9684"><div class="ingredient-fill" data-w="40" data-lvt-eid="69c36a57b7"></div></div>
+          </div>
+          <div class="ingredient" data-lvt-eid="1d4116c246">
+            <div class="ingredient-head" data-lvt-eid="60742c6088"><span data-lvt-eid="ceaacf0ad8">突发奇想</span><span class="pct" data-lvt-eid="c81ac6a768">30%</span></div>
+            <div class="ingredient-bar" data-lvt-eid="31646e6c7c"><div class="ingredient-fill" data-w="30" data-lvt-eid="522383eb36"></div></div>
+          </div>
+          <div class="ingredient" data-lvt-eid="288231df75">
+            <div class="ingredient-head" data-lvt-eid="2161be4275"><span data-lvt-eid="e71fd40357">待机放空</span><span class="pct" data-lvt-eid="31c14aa133">30%</span></div>
+            <div class="ingredient-bar" data-lvt-eid="c15e19b1bc"><div class="ingredient-fill" data-w="30" data-lvt-eid="ce2ea23906"></div></div>
+          </div>
+          <p class="ingredient-note" data-lvt-eid="c1a7262549">我的主要成分：40%咖啡因，30%突发奇想，30%待机放空，偶尔触发人类笑点神经</p>
+        </div>
+
+        <!-- 出厂设定（称号池） -->
+        <div class="dream-card manual-card reveal d2" data-lvt-eid="fad7319bb1">
+          <h3 data-lvt-eid="1bab6af143">出厂设定</h3>
+          <div class="title-chips" data-lvt-eid="728ad4bf62">
+            <span class="title-chip" data-lvt-eid="9d64dcc094">熬夜特区顶级钉子户</span>
+            <span class="title-chip" data-lvt-eid="14ed496a5c">全球赖床锦标赛形象大使</span>
+            <span class="title-chip" data-lvt-eid="afee912c3c">拖延俱乐部顶级VIP</span>
+            <span class="title-chip" data-lvt-eid="4ee9e6fd81">汤包鉴赏终身成就奖得主</span>
+          </div>
+        </div>
+
+        <!-- 主要功能（个人特长/性格） -->
+        <div class="dream-card manual-card wide reveal" data-lvt-eid="d581e31e86">
+          <h3 data-lvt-eid="3798a30b6d">主要功能</h3>
+          <ul class="func-list" data-lvt-eid="ddb0999013">
+            <li data-lvt-eid="09f01736a5">做事有耐心，可沉浸式干活（进入状态前需一段心理建设缓冲）</li>
+            <li data-lvt-eid="c0ea60c4d8">擅长自我反思，复盘功能常驻后台</li>
+            <li data-lvt-eid="42d5206830">小时候体育有天赋，常代表班级拿运动会奖项</li>
+            <li data-lvt-eid="115300ff5c">小时候学舞，高中学美术，审美模块双线程预装</li>
+            <li data-lvt-eid="97fe224464">熟练使用 PS、AI、Figma、PR、AE、C4D、Maya、Lovart、Liblibai、Trae 等</li>
+          </ul>
+        </div>
+
+        <!-- 使用须知 -->
+        <div class="dream-card manual-card wide reveal d1" data-lvt-eid="e54d4a6997">
+          <h3 data-lvt-eid="1cb74d35f0">使用须知</h3>
+          <p class="notice-text" data-lvt-eid="564903cefb"><strong data-lvt-eid="3c34416bba">用户须知：</strong>观看本人即默认同意：1. 接受不定期胡言乱语；2. 理解本人处于薛定谔的坍缩态；3. 放弃对严肃解读的权利。</p>
+          <p class="notice-text" data-lvt-eid="6d628f480a"><strong data-lvt-eid="8a1100b4c8">兹声明：</strong>本人主体提供的一切内容，仅供娱乐及打发地铁时光之用。不对内容真实性、逻辑连贯性、及可能引发的困惑/笑声负责。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 成长之路 ══════════ -->
+  <section class="section" id="growth" data-lvt-eid="689a20a15e">
+    <span class="next-stop-flag" data-lvt-eid="31935a9356">✦ 梦境签指引的下一站</span>
+    <div class="bg-photo" data-lvt-eid="800059b8c3">
+      <img src="https://a.lovart.ai/artifacts/agent/SqPBfchtTYKaYWhO.png" alt="成长之路主题图" data-lvt-eid="94f22a45ce">
+    </div>
+    <div class="container" data-lvt-eid="21799ce715">
+      <div class="section-head reveal" data-lvt-eid="391394c86d">
+        <h2 class="section-title" data-lvt-eid="d3e33db2da">成长之路<span class="en" data-lvt-eid="3544e5ae41">Growth Path</span></h2>
+        <div class="divider-glow" data-lvt-eid="8cdd1fc563"></div>
+        <p class="section-lede" data-lvt-eid="e4664b3312">从运动会跑道到设计工位，一条慢慢加速的时间线。</p>
+      </div>
+
+      <div class="timeline" data-lvt-eid="5aa090bd5e">
+        <div class="tl-item reveal" data-lvt-eid="b9114a8e07">
+          <p class="tl-date" data-lvt-eid="d6f13d0929">童年 · 出厂预装</p>
+          <div class="dream-card tl-card" data-lvt-eid="7eec2ffbc6">
+            <h4 data-lvt-eid="0596a28d6a">运动天赋 &amp; 舞蹈启蒙</h4>
+            <p class="role" data-lvt-eid="91a5e21968">班级运动会常驻选手 / 舞蹈班学员</p>
+            <p data-lvt-eid="81fa956b12">小时候体育有天赋，常代表班级拿运动会奖项；小时候学舞，身体先于审美学会了表达。</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" data-lvt-eid="d78a54e73d">
+          <p class="tl-date" data-lvt-eid="f292dacc66">高中 · 美术转向</p>
+          <div class="dream-card tl-card" data-lvt-eid="81e2b020a8">
+            <h4 data-lvt-eid="2837e02a65">高中学美术</h4>
+            <p class="role" data-lvt-eid="f25e6b649a">美术生</p>
+            <p data-lvt-eid="0061e8d516">从身体表达转向视觉表达，素描纸成为第一块画布。</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" data-lvt-eid="0991df9bea">
+          <p class="tl-date" data-lvt-eid="50f1710934">2023.09 - 至今</p>
+          <div class="dream-card tl-card" data-lvt-eid="4a9be56519">
+            <h4 data-lvt-eid="eb53410e89">中南财经政法大学 · 数字媒体艺术 本科</h4>
+            <p class="role" data-lvt-eid="d1c1b79fc1">新闻与文化传播学院数字技术部副部长、班长（2023.09-至今）</p>
+            <p data-lvt-eid="88af4ddbbf">专业成绩 Rank1；国家奖学金、明理奖学金；英语 CET4 500+；普通话一乙。</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" data-lvt-eid="52c1c6267e">
+          <p class="tl-date" data-lvt-eid="bd19045382">2024.06 - 2024.09</p>
+          <div class="dream-card tl-card" data-lvt-eid="cef597af9d">
+            <h4 data-lvt-eid="a1a834ef47">新华倍阅书店 &amp; 中南财经政法大学</h4>
+            <p class="role" data-lvt-eid="ddc638fcaa">校园文创设计</p>
+            <p data-lvt-eid="3fd412f1ed">把校园记忆做成可以拿在手里的物件。</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" data-lvt-eid="b678cffa4c">
+          <p class="tl-date" data-lvt-eid="b6cdeae38a">2026.04 - 2026.06</p>
+          <div class="dream-card tl-card" data-lvt-eid="11a1cd7525">
+            <h4 data-lvt-eid="58afea388e">深圳冰川网络有限公司（武汉）</h4>
+            <p class="role" data-lvt-eid="f9bab64bd7">海外视频视觉设计实习生</p>
+            <p data-lvt-eid="e43206a7ce">面向海外市场的视频视觉设计，节奏感与镜头语言的第一线实战。</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" data-lvt-eid="e6e7230f18">
+          <p class="tl-date" data-lvt-eid="e94f567ea3">2026.07 - 2026.09</p>
+          <div class="dream-card tl-card" data-lvt-eid="f0ea2205e8">
+            <h4 data-lvt-eid="3762377e9b">神龙汽车有限公司</h4>
+            <p class="role" data-lvt-eid="4e80727a70">营销产品内容创意实习生</p>
+            <p data-lvt-eid="2a4cb3b113">营销产品内容创意，把卖点翻译成看得懂、记得住的画面。</p>
+          </div>
+        </div>
+
+        <div class="tl-item reveal" data-lvt-eid="6813c986fb">
+          <p class="tl-date" data-lvt-eid="f02e3c371f">即将 · 下一帧</p>
+          <div class="dream-card tl-card" data-lvt-eid="c8e69b7d9d">
+            <h4 data-lvt-eid="6d1056a763">东华大学 · 研究生</h4>
+            <p class="role" data-lvt-eid="9627633ae6">即将入学</p>
+            <p data-lvt-eid="9988ca6f6f">教育路线：中南财经政法大学 数字媒体艺术 本科（2023-2027）→ 东华大学 研究生（即将）。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 奖项技能（择要展示） -->
+      <div class="dream-card reveal" style="margin-top:56px;" data-lvt-eid="a444433fa2">
+        <h3 style="font-family:var(--serif-cn);font-weight:700;font-size:20px;letter-spacing:.1em;color:var(--highlight);margin-bottom:16px;" data-lvt-eid="e06987a10c">奖项与技能 · 择要展示</h3>
+        <div class="title-chips" data-lvt-eid="6c21ddd45a">
+          <span class="title-chip" data-lvt-eid="cf1b6e2778">专业成绩 Rank1</span>
+          <span class="title-chip" data-lvt-eid="d4cb645494">国家奖学金</span>
+          <span class="title-chip" data-lvt-eid="447c847c31">明理奖学金</span>
+          <span class="title-chip" data-lvt-eid="b69a9b492b">中国好创意国赛三等奖</span>
+          <span class="title-chip" data-lvt-eid="27cd4d09cf">中国好创意省赛一等奖</span>
+          <span class="title-chip" data-lvt-eid="8b8ae4c830">华灿奖</span>
+          <span class="title-chip" data-lvt-eid="58eb1b95a7">米兰设计周</span>
+          <span class="title-chip" data-lvt-eid="7d99cf94ef">英语 CET4 500+</span>
+          <span class="title-chip" data-lvt-eid="bb48433046">普通话一乙</span>
+          <span class="title-chip" data-lvt-eid="add6d72959">PS / AI / Figma</span>
+          <span class="title-chip" data-lvt-eid="9efc82c11a">PR / AE / C4D / Maya</span>
+          <span class="title-chip" data-lvt-eid="7aae205ad3">Lovart / Liblibai / Trae</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 我的包里有什么 ══════════ -->
+  <section class="section" id="bag" data-lvt-eid="5d34e71af4">
+    <span class="next-stop-flag" data-lvt-eid="729bbcd1a6">✦ 梦境签指引的下一站</span>
+    <div class="bg-photo" data-lvt-eid="9443a1f545">
+      <img src="https://a.lovart.ai/artifacts/agent/hOAwzvGoti5qzC0g.png" alt="我的包里有什么主题图" data-lvt-eid="45f6fc5530">
+    </div>
+    <div class="container" data-lvt-eid="1aac44dd8d">
+      <div class="section-head reveal" data-lvt-eid="975a019238">
+        <h2 class="section-title" data-lvt-eid="214246e2e3">我的包里有什么<span class="en" data-lvt-eid="33e2d497ff">What's In My Bag</span></h2>
+        <div class="divider-glow" data-lvt-eid="1550588ce6"></div>
+        <p class="section-lede" data-lvt-eid="4002347368">翻包检查：以下物品长期随身携带，缺一不可。</p>
+      </div>
+
+      <div class="bag-items" data-lvt-eid="32143812b5">
+        <div class="dream-card bag-item reveal" data-lvt-eid="bd18be9ded"><div class="bag-emoji" data-lvt-eid="ae045b49c5">😴</div><h4 data-lvt-eid="5344279f74">睡眠</h4><p data-lvt-eid="670acff6e6">全球赖床锦标赛形象大使的随身装备，优先级最高。</p></div>
+        <div class="dream-card bag-item reveal d1" data-lvt-eid="ac34fc4f48"><div class="bag-emoji" data-lvt-eid="00f186442c">🎧</div><h4 data-lvt-eid="654d4cb0a7">音乐</h4><p data-lvt-eid="a2ac971f21">咖啡因之外的第二燃料，待机放空时的背景音轨。</p></div>
+        <div class="dream-card bag-item reveal d2" data-lvt-eid="4cb4bcc2d3"><div class="bag-emoji" data-lvt-eid="914fcfc48a">📺</div><h4 data-lvt-eid="8af9c1f2ef">追剧</h4><p data-lvt-eid="0b7311debc">地铁时光的主要消耗方式，符合免责声明用途。</p></div>
+        <div class="dream-card bag-item reveal d3" data-lvt-eid="0c4020bfa8"><div class="bag-emoji" data-lvt-eid="8f928f74b2">💃</div><h4 data-lvt-eid="8f608fc506">舞蹈</h4><p data-lvt-eid="a02845b311">小时候学舞留下的肌肉记忆，偶尔自动播放。</p></div>
+        <div class="dream-card bag-item reveal" data-lvt-eid="3bb346d203"><div class="bag-emoji" data-lvt-eid="cb23296c0e">🥟</div><h4 data-lvt-eid="e634d2f771">汤包</h4><p data-lvt-eid="64c9fa53a8">坚定素食主义者的唯一例外，汤包鉴赏终身成就奖实证。</p></div>
+        <div class="dream-card bag-item reveal d1" data-lvt-eid="31a864dba9"><div class="bag-emoji" data-lvt-eid="43711da977">🥔</div><h4 data-lvt-eid="0a5df1a6bd">土豆 &amp; 豆制品</h4><p data-lvt-eid="26e492ed6b">素食菜单里的本命组合，喜欢吃土豆、豆制品。</p></div>
+        <div class="dream-card bag-item reveal d2" data-lvt-eid="84c8234c60"><div class="bag-emoji" data-lvt-eid="95596aba57">📷</div><h4 data-lvt-eid="1017619e52">镜头</h4><p data-lvt-eid="3e857860cd">把梦核现场装进口袋的工具，详见下一区。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 镜头里的世界（上传区） ══════════ -->
+  <section class="section" id="lens" data-lvt-eid="244b757294">
+    <span class="next-stop-flag" data-lvt-eid="ba99d7040e">✦ 梦境签指引的下一站</span>
+    <div class="bg-photo" data-lvt-eid="8a0317558b">
+      <img src="https://a.lovart.ai/artifacts/agent/hqvbWUv4IraIyhuL.png" alt="镜头里的世界主题图" data-lvt-eid="e55696824d">
+    </div>
+    <div class="container" data-lvt-eid="ad85174b61">
+      <div class="section-head reveal" data-lvt-eid="85d190c181">
+        <h2 class="section-title" data-lvt-eid="20c96f6b7f">镜头里的世界<span class="en" data-lvt-eid="6ee55b7b10">Lens World</span></h2>
+        <div class="divider-glow" data-lvt-eid="1d63e1ef9a"></div>
+        <p class="section-lede" data-lvt-eid="06618e2f56">作品上传区：拖拽或选择图片 / 视频，投进这片梦境画廊。单文件不超过 20MB。</p>
+      </div>
+
+      <div class="upload-zone reveal" id="uploadZone" role="button" tabindex="0" aria-label="上传作品" data-lvt-eid="5181c3e8ea">
+        <div class="upload-icon" data-lvt-eid="0af16a723e">🎞️</div>
+        <h4 data-lvt-eid="64eee49205">把作品投进梦境</h4>
+        <p data-lvt-eid="4fe2a4dd5a">拖拽文件到这里，或点击选择 · 支持图片与视频 · 单文件 ≤ 20MB</p>
+        <p class="upload-status" id="uploadStatus" data-lvt-eid="0c50ba8c26"></p>
+        <input type="file" id="fileInput" accept="image/*,video/*" multiple="" hidden="" data-lvt-eid="a82710aa12">
+      </div>
+
+      <div class="settings-toggle reveal d1" data-lvt-eid="c00c82fc56">
+        <button class="settings-btn" id="settingsToggle" data-lvt-eid="ceab82013a">⚙ 云同步设置（可选 · GitHub API）</button>
+      </div>
+      <div class="dream-card settings-panel" id="settingsPanel" data-lvt-eid="d9fa77ffba">
+        <label for="ghToken" data-lvt-eid="c43fa4bee3">GitHub Token</label>
+        <input type="password" id="ghToken" placeholder="ghp_..." autocomplete="off" data-lvt-eid="d123093ae8">
+        <label for="ghRepo" data-lvt-eid="c31bbcee22">仓库（owner/repo）</label>
+        <input type="text" id="ghRepo" placeholder="username/repo" autocomplete="off" data-lvt-eid="afc5416ef9">
+        <label for="ghBranch" data-lvt-eid="23f7b3fd4d">分支</label>
+        <input type="text" id="ghBranch" placeholder="main" autocomplete="off" data-lvt-eid="bd6a648510">
+        <button class="settings-save" id="ghSave" data-lvt-eid="a156e92420">保存设置</button>
+        <p class="tip" data-lvt-eid="999b8818f1">填写并保存后，上传的作品会同步推送到该仓库的 dreams/ 目录；未配置时自动回退到浏览器本地存储（IndexedDB），刷新后仍保留。</p>
+      </div>
+
+      <div class="works-grid" id="worksGrid" data-lvt-eid="2b4e062be5">
+        <div class="work-empty" data-lvt-eid="30278d47fa">梦境画廊暂时是空的 —— 投进第一件作品，让它开始发光。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 我的梦境小铺 ══════════ -->
+  <section class="section" id="shop" data-lvt-eid="1d350857a9">
+    <span class="next-stop-flag" data-lvt-eid="028b9edb3f">✦ 梦境签指引的下一站</span>
+    <div class="bg-photo" data-lvt-eid="f5bbc985ea">
+      <img src="https://a.lovart.ai/artifacts/agent/GfBQE9tovGBSdcXu.png" alt="我的梦境小铺主题图" data-lvt-eid="488eb052e5">
+    </div>
+    <div class="container" data-lvt-eid="cba6f08190">
+      <div class="section-head reveal" data-lvt-eid="78640f4f2e">
+        <h2 class="section-title" data-lvt-eid="37b77cfaa8">我的梦境小铺<span class="en" data-lvt-eid="878b55e761">My Dream Shop</span></h2>
+        <div class="divider-glow" data-lvt-eid="ff1a498fe5"></div>
+        <p class="section-lede" data-lvt-eid="cf0b05aed1">本店以梦币计价，只卖特质与技能，加购仅为视觉计数，不发货、不售后。</p>
+      </div>
+
+      <div class="shop-grid" data-lvt-eid="da0bffdbb9">
+        <div class="dream-card shop-item reveal" data-lvt-eid="71eadfb58c">
+          <div class="shop-emoji" data-lvt-eid="b28c8dc4b6">🎨</div>
+          <h4 data-lvt-eid="ed9bffebe0">平面设计全套手艺</h4>
+          <p data-lvt-eid="7b001d4ffc">PS / AI / Figma 熟练，从版式到视觉系统一次到位。</p>
+          <div class="shop-buy-row" data-lvt-eid="a7308def41"><span class="shop-price" data-lvt-eid="25c2a78fbc">3 梦币</span><button class="add-cart-btn" data-name="平面设计全套手艺" data-lvt-eid="e17ce93990">加入购物车</button></div>
+        </div>
+        <div class="dream-card shop-item reveal d1" data-lvt-eid="7c6214c689">
+          <div class="shop-emoji" data-lvt-eid="c28612266b">🎬</div>
+          <h4 data-lvt-eid="411cdfcd75">视频视觉与动效</h4>
+          <p data-lvt-eid="e5b94cbf51">PR / AE 剪辑与动效，海外视频视觉设计实习实战认证。</p>
+          <div class="shop-buy-row" data-lvt-eid="39c0f51c3b"><span class="shop-price" data-lvt-eid="3eeafdba27">3 梦币</span><button class="add-cart-btn" data-name="视频视觉与动效" data-lvt-eid="4f1c788152">加入购物车</button></div>
+        </div>
+        <div class="dream-card shop-item reveal d2" data-lvt-eid="711550eaa2">
+          <div class="shop-emoji" data-lvt-eid="2d64151ae4">🧊</div>
+          <h4 data-lvt-eid="bdd221fd3d">三维建模入场券</h4>
+          <p data-lvt-eid="e9f644568d">C4D / Maya 双引擎，把脑洞先建出来再说。</p>
+          <div class="shop-buy-row" data-lvt-eid="b701d8cb3a"><span class="shop-price" data-lvt-eid="7c2aa70e52">2 梦币</span><button class="add-cart-btn" data-name="三维建模入场券" data-lvt-eid="476fb3ea27">加入购物车</button></div>
+        </div>
+        <div class="dream-card shop-item reveal" data-lvt-eid="625e90b227">
+          <div class="shop-emoji" data-lvt-eid="8ae369bcba">🤖</div>
+          <h4 data-lvt-eid="8ffb70ab92">AI 工具驯兽师服务</h4>
+          <p data-lvt-eid="058a99c3d1">Lovart / Liblibai / Trae 日常驾驶，让模型听话出图。</p>
+          <div class="shop-buy-row" data-lvt-eid="a597f4d55a"><span class="shop-price" data-lvt-eid="226e241553">2 梦币</span><button class="add-cart-btn" data-name="AI 工具驯兽师服务" data-lvt-eid="5b84c0b932">加入购物车</button></div>
+        </div>
+        <div class="dream-card shop-item reveal d1" data-lvt-eid="8a8298a3b8">
+          <div class="shop-emoji" data-lvt-eid="16e0631b85">🧘</div>
+          <h4 data-lvt-eid="58fb084abd">沉浸式干活模式</h4>
+          <p data-lvt-eid="0433dbfcc3">耐心满格，进入状态后勿扰；启动前附赠一段心理建设仪式。</p>
+          <div class="shop-buy-row" data-lvt-eid="03323cd6ed"><span class="shop-price" data-lvt-eid="0e81d01339">4 梦币</span><button class="add-cart-btn" data-name="沉浸式干活模式" data-lvt-eid="93056d17a2">加入购物车</button></div>
+        </div>
+        <div class="dream-card shop-item reveal d2" data-lvt-eid="96356c2919">
+          <div class="shop-emoji" data-lvt-eid="e8412c525e">🪞</div>
+          <h4 data-lvt-eid="c8bd298c25">自我反思复盘术</h4>
+          <p data-lvt-eid="0983e0c86d">擅长自我反思，项目结束自动产出一份诚实复盘。</p>
+          <div class="shop-buy-row" data-lvt-eid="fa0ed4168f"><span class="shop-price" data-lvt-eid="f459180249">1 梦币</span><button class="add-cart-btn" data-name="自我反思复盘术" data-lvt-eid="fecca02833">加入购物车</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ Footer / 联系 ══════════ -->
+  <footer class="site-footer" id="contact" data-lvt-eid="61c36402d0">
+    <span class="next-stop-flag" data-lvt-eid="bb305507c0">✦ 梦境签指引的下一站</span>
+    <div class="footer-grid" data-lvt-eid="8d620b3f90">
+      <div class="footer-brand" data-lvt-eid="98d16ba295">
+        <h3 data-lvt-eid="9107709562">韩佳韵 · 橙血梦境局</h3>
+        <p class="en" data-lvt-eid="2c7fa69704">Orange Blood Dream Bureau</p>
+        <p data-lvt-eid="439058cf67">投一枚梦币，打开我的平行人生。一个把自己当成品牌产品企划的梦核网站，欢迎常来投币。</p>
+      </div>
+
+      <div class="footer-col" data-lvt-eid="74b7074fed">
+        <h5 data-lvt-eid="cda223a50f">联 系 方 式</h5>
+        <ul class="contact-list" data-lvt-eid="15255a4d42">
+          <li data-lvt-eid="fae15fa06e"><span class="k" data-lvt-eid="276835cf3e">电话</span><span class="num" data-lvt-eid="303a601341">18607111335</span></li>
+          <li data-lvt-eid="f0074a52db"><span class="k" data-lvt-eid="4dd286acde">邮箱</span><span class="num" data-lvt-eid="aada2945a6">18607111335@163.com</span></li>
+          <li data-lvt-eid="5fec9954ba"><span class="k" data-lvt-eid="6480aeaefd">微信</span><span data-lvt-eid="132216c44c">wendyylone</span></li>
+          <li data-lvt-eid="17dcd8a569"><span class="k" data-lvt-eid="83ab19aee2">现居</span><span data-lvt-eid="a6e51c6c70">湖北武汉</span></li>
+        </ul>
+      </div>
+
+      <div class="footer-col" data-lvt-eid="dd001c5e9c">
+        <h5 data-lvt-eid="31abd29782">社 交 占 位</h5>
+        <div class="social-row" data-lvt-eid="f62ae34c2a">
+          <span class="social-chip" data-lvt-eid="51d5e84607">微博 · 待上架</span>
+          <span class="social-chip" data-lvt-eid="4e64e292d7">小红书 · 待上架</span>
+          <span class="social-chip" data-lvt-eid="b05a10bb27">B站 · 待上架</span>
+          <span class="social-chip" data-lvt-eid="17cece961c">作品集 · 待上架</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom" data-lvt-eid="64b5593e56">
+      <span class="dream-mark" data-lvt-eid="770982d29a">梦</span>
+      本站为新媒体企划设计课程作业，非商业用途，仅供娱乐展示。<br data-lvt-eid="5f452a9d6f">
+      © 2026 韩佳韵 · 橙血梦境局 Orange Blood Dream Bureau
+    </div>
+  </footer>
+
+</main>
+
+<!-- 购物车浮标 -->
+<button class="cart-fab" id="cartFab" aria-label="购物车" data-lvt-eid="7e5af068bc">
+  🛒<span class="cart-count" id="cartCount" data-lvt-eid="249a49cd1c">0</span>
+</button>
+
+<script src="./script.js"></script>
+
+
+</body></html>
